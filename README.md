@@ -7,6 +7,7 @@ Welcome to my **Data Portfolio**! 🚀 This repository showcases various project
 1. **IBM Project** - 🧑‍💻 A project that explores a data set from IBM, where I used Python to analyse and visualise complex data, uncovering key insights.
 2. **Superstore Case Study** - 🛍️ A thorough exploration of sales data to identify trends, performance gaps, and optimisation opportunities.
 3. **Train Case Study** - 🚉 Analyzing train station data, focusing on performance metrics and optimising schedules based on patterns.
+4. **Plant Co.** - 🛍️ A sales performance dashboard which helps managers quickly assess how well the company is performing.
 
 ---
 
