@@ -1,0 +1,210 @@
+{
+  "description": "Orchestration configuration for data ingestion components",
+  "version": "1.0.0",
+  "components": {
+    "gtfs_schedule": {
+      "enabled": true,
+      "frequency": "weekly",
+      "description": "GTFS Schedule data ingestion",
+      "priority": 1,
+      "max_runtime_minutes": 30,
+      "dependencies": [],
+      "provides": ["stations", "routes", "stops"]
+    },
+    "gtfs_realtime": {
+      "enabled": true,
+      "frequency": "hourly",
+      "description": "GTFS Realtime data ingestion",
+      "priority": 2,
+      "max_runtime_minutes": 15,
+      "dependencies": ["gtfs_schedule"],
+      "provides": ["real_time_updates", "service_alerts"],
+      "quota_management": {
+        "daily_limit": 1000,
+        "retry_after_quota": "24h",
+        "priority_endpoints": ["metro_train_trip_updates", "metro_train_alerts"]
+      }
+    },
+    "ptv_timetable": {
+      "enabled": true,
+      "frequency": "daily",
+      "description": "PTV Timetable API data ingestion",
+      "priority": 3,
+      "max_runtime_minutes": 20,
+      "dependencies": ["gtfs_schedule"],
+      "provides": ["timetables", "disruptions"]
+    },
+    "datavic_discovery": {
+      "enabled": true,
+      "frequency": "weekly",
+      "description": "Data.vic dataset discovery and metadata collection",
+      "priority": 4,
+      "max_runtime_minutes": 10,
+      "dependencies": [],
+      "provides": ["dataset_metadata"]
+    },
+    "datavic_station_patronage": {
+      "enabled": true,
+      "frequency": "monthly",
+      "description": "Annual station patronage data (check for updates)",
+      "priority": 5,
+      "max_runtime_minutes": 5,
+      "dependencies": ["gtfs_schedule"],
+      "provides": ["station_patronage"]
+    },
+    "datavic_temporal_patronage": {
+      "enabled": true,
+      "frequency": "monthly",
+      "description": "Monthly patronage by day type and mode",
+      "priority": 6,
+      "max_runtime_minutes": 10,
+      "dependencies": [],
+      "provides": ["temporal_patronage"]
+    }
+  },
+  "scheduling": {
+    "daily_components": [
+      "gtfs_realtime",
+      "ptv_timetable"
+    ],
+    "weekly_components": [
+      "gtfs_schedule",
+      "datavic_discovery"
+    ],
+    "monthly_components": [
+      "datavic_station_patronage",
+      "datavic_temporal_patronage"
+    ]
+  },
+  "runtime_settings": {
+    "max_concurrent_components": 2,
+    "retry_failed_components": true,
+    "max_retries": 1,
+    "retry_delay_seconds": 30,
+    "enable_notifications": true,
+    "dependency_check_enabled": true,
+    "skip_unchanged_dependencies": true,
+    "execution_timeout_minutes": 120,
+    "change_detection_enabled": true,
+    "performance_monitoring_enabled": true,
+    "adaptive_scheduling_enabled": true,
+    "data_quality_validation_enabled": true
+  },
+  "dependency_management": {
+    "execution_order": [
+      "gtfs_schedule",
+      "datavic_discovery",
+      "gtfs_realtime",
+      "ptv_timetable",
+      "datavic_station_patronage",
+      "datavic_temporal_patronage"
+    ],
+    "parallel_groups": [
+      ["gtfs_realtime", "ptv_timetable"],
+      ["datavic_station_patronage", "datavic_temporal_patronage"]
+    ]
+  },
+  "change_detection": {
+    "methods": {
+      "file_hash": {
+        "enabled": true,
+        "algorithm": "sha256"
+      },
+      "api_etag": {
+        "enabled": true,
+        "cache_duration_hours": 24
+      },
+      "record_count": {
+        "enabled": true,
+        "threshold_percentage": 5
+      },
+      "last_modified": {
+        "enabled": true,
+        "precision": "minutes"
+      }
+    },
+    "cache_directory": "data/cache/change_detection"
+  },
+  "performance_monitoring": {
+    "enabled": true,
+    "metrics": {
+      "execution_time": true,
+      "memory_usage": true,
+      "api_response_time": true,
+      "data_throughput": true,
+      "error_rate": true
+    },
+    "thresholds": {
+      "max_execution_time_minutes": 60,
+      "max_memory_mb": 1024,
+      "max_api_response_ms": 30000,
+      "min_success_rate_percentage": 95
+    },
+    "alerting": {
+      "enabled": true,
+      "email_notifications": ["admin@resilientservices.gov.au"],
+      "slack_webhook": null
+    }
+  },
+  "data_quality": {
+    "enabled": true,
+    "validation_rules": {
+      "record_count_min": 1,
+      "null_percentage_max": 10,
+      "duplicate_percentage_max": 5,
+      "schema_validation": true
+    },
+    "quarantine_failed_data": true,
+    "quality_reports": true
+  },
+  "adaptive_scheduling": {
+    "enabled": true,
+    "learning_window_days": 30,
+    "auto_adjust_frequency": true,
+    "peak_hours": {
+      "start": "07:00",
+      "end": "09:00"
+    },
+    "off_peak_hours": {
+      "start": "22:00",
+      "end": "06:00"
+    }
+  },
+  "rate_limiting": {
+    "enabled": true,
+    "global_delays": {
+      "between_components": 2,
+      "between_api_calls": 3,
+      "on_error": 5
+    },
+    "component_specific": {
+      "gtfs_realtime": {
+        "between_endpoints": 20,
+        "retry_delay": 20,
+        "max_retries": 0
+      },
+      "ptv_timetable": {
+        "between_endpoints": 5,
+        "retry_delay": 15,
+        "max_retries": 0
+      },
+      "datavic_discovery": {
+        "between_calls": 2,
+        "retry_delay": 10,
+        "max_retries": 0
+      },
+      "gtfs_schedule": {
+        "download_retry_delay": 60,
+        "max_retries": 0
+      }
+    }
+  },
+  "override_settings": {
+    "force_run_all": false,
+    "skip_frequency_check": false,
+    "skip_dependency_check": false,
+    "skip_change_detection": false,
+    "skip_data_quality": false,
+    "dry_run": false
+  }
+}
